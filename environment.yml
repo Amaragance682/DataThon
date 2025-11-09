@@ -1,0 +1,18 @@
+name: hvds-datathon
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - jupyterlab
+  - ipykernel
+  - numpy
+  - pandas
+  - pyarrow
+  - requests
+  - scikit-learn
+  - xgboost
+  - matplotlib
+  - seaborn
+  - statsmodels
+  - pip
+  - openpyxl
