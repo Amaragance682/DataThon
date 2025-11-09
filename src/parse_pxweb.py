@@ -2,7 +2,7 @@ import json, pathlib, pandas as pd, numpy as np
 from typing import Tuple
 
 def pxweb_to_frame(px: dict) -> pd.DataFrame:
-    # include both regular dims ("d") and time dims ("t")
+    # include both regular dims ("d") and time dimensionss ("t")
     dim_codes = [c["code"] for c in px["columns"] if c["type"] in ("d", "t")]
 
     records = []
@@ -17,7 +17,7 @@ def pxweb_to_frame(px: dict) -> pd.DataFrame:
 
     df = pd.DataFrame.from_records(records)
 
-    # normalize common names (add Icelandic -> English)
+    # normalize common names (add Icelandic -> English), think we did this in train.py too? just to be safe lmao
     rename = {
         "Ár": "year",
         "Ársfjórðungur": "quarter",
@@ -42,11 +42,6 @@ def pxweb_to_frame(px: dict) -> pd.DataFrame:
         df["date"] = pd.to_datetime(df["year"].astype(str) + "-12-31", errors="coerce")
     else:
         df["date"] = pd.NaT
-
-    # optional: drop constant category column (always '3' for your query)
-    if "category" in df.columns and df["category"].nunique() == 1:
-        df = df.drop(columns=["category"])
-
     return df.sort_values("date").reset_index(drop=True)
 
 def save_parquet(df: pd.DataFrame, path: str):

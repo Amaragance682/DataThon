@@ -15,7 +15,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 # =========================
 PLOT_DIV = 1000.0  # m.kr. -> ISK bn for plotting
 Q_END = "end"
-DATE_HINTS = {"date","quarter","árs­fjórðungur","ársfjórðungur","arsfjordungur","month","time","year"}
+DATE_HINTS = {"date","quarter","árs­fjórðungur","ársfjórðungur","arsfjordungur","month","time","year"} # giga mikid guesswork thvi csv og xlsx eru svo misjafnlega formatuð, but don't feel like it ig?
 
 # =========================
 # Generic date/value parsing (target loader)
@@ -90,7 +90,7 @@ def _load_pxweb_json(path: pathlib.Path) -> pd.DataFrame:
         recs.append(rec)
     df = pd.DataFrame.from_records(recs)
 
-    # normalize common names
+    # normalize common names, incase an english speaker is using icelandic data
     rename = {
         "Ár":"year","Ársfjórðungur":"quarter","Mánuður":"month",
         "Tími":"time","Time":"time","Skipting":"category","Vara":"product",
@@ -241,7 +241,7 @@ def load_cargo_monthly(drivers_dir: pathlib.Path) -> pd.DataFrame:
     cg = cg.loc[:, ~cg.columns.astype(str).str.startswith("Unnamed")]
     cg.columns = [str(c).strip() for c in cg.columns]
 
-    # rename Year/Month, keep any “Total” as-is
+    # rename Year/Month, keep any “Total” just as it is
     ren = {}
     for c in cg.columns:
         lc = c.lower()
@@ -309,7 +309,7 @@ def fit_xgb_robust(model, X_tr, y_tr, X_va=None, y_va=None, early_stop=0):
     if X_va is None or early_stop <= 0:
         model.fit(X_tr, y_tr)
         return model
-    # 1) Try newer callback API
+    # 1) new vers callback api
     try:
         cb = getattr(xgb.callback, "EarlyStopping", None)
         if cb is not None:
@@ -322,7 +322,7 @@ def fit_xgb_robust(model, X_tr, y_tr, X_va=None, y_va=None, early_stop=0):
             return model
     except Exception:
         pass
-    # 2) Try legacy kwarg
+    # 2) if that fails, try old param style
     try:
         model.fit(
             X_tr, y_tr,
@@ -333,7 +333,7 @@ def fit_xgb_robust(model, X_tr, y_tr, X_va=None, y_va=None, early_stop=0):
         return model
     except TypeError:
         pass
-    # 3) Fallback
+    # 3) if all else fails, no early stopping
     model.fit(X_tr, y_tr, eval_set=[(X_va, y_va)], verbose=False)
     return model
 
@@ -351,7 +351,7 @@ def run_experiment(name: str,
     data = merge_drivers(df_t, drivers)
     data = make_ts_features(data, target="y")
 
-    # create lagged versions of ALL exogenous columns (no leakage)
+    # create lagged versions of ALL exogenous columns to ensure no data leakage
     exo_raw = [c for c in data.columns if c not in ("date","y") and not c.startswith(("lag_","roll","Q_"))]
     for c in exo_raw:
         data[c+"_lag1"] = data[c].shift(1)
@@ -508,7 +508,7 @@ def main():
         "base+fx+cpi":             [fx_q, cpi_q]     if cpi_q   is not None else [],
         "base+fx+cpi+cargo":       [fx_q, cpi_q, cargo_q] if cargo_q is not None else [],
     }
-    # sanity: if user asked for a set requiring drivers but drivers_dir missing -> drop it
+    # sanity check for if user asked for a set requiring drivers but drivers_dir missing -> drop it
     filtered = {}
     for name in args.sets:
         if name not in all_sets:
